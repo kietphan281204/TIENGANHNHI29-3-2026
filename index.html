@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>có 4 phút thôi ní ráng làm xíu nhé</title>
+
+<style>
+body{
+  margin:0;
+  font-family:Arial,Helvetica,sans-serif;
+  background:#c5d818;
+  color:white;
+  padding:20px;
+  overflow-x:hidden;
+}
+.container{
+  max-width:900px;
+  margin:auto;
+  background:#1e293b;
+  padding:20px;
+  border-radius:16px;
+  position:relative;
+  z-index:1;
+}
+h1{text-align:center}
+.timer{
+  position:sticky;
+  top:0;
+  background:#facc15;
+  color:rgb(0, 0, 0);
+  padding:10px;
+  text-align:center;
+  border-radius:12px;
+  font-size:20px;
+  margin-bottom:16px;
+  z-index:2;
+}
+.question{
+  background:#b86196;
+  padding:12px;
+  border-radius:12px;
+  margin-bottom:14px;
+}
+.answers label{
+  display:block;
+  padding:6px;
+  border-radius:8px;
+  margin:6px 0;
+  cursor:pointer;
+}
+.correct{background:#14532d !important;color:#bbf7d0 !important}
+.wrong{background:#7f1d1d !important;color:#fecaca !important}
+button{
+  display:block;
+  margin:20px auto;
+  padding:12px 26px;
+  font-size:16px;
+  border:none;
+  border-radius:12px;
+  background:#4f46e5;
+  color:white;
+  cursor:pointer;
+}
+
+/* ===== TUYẾT RƠI ===== */
+.snowflake{
+  position:fixed;
+  top:-10px;
+  color:white;
+  font-size:1em;
+  user-select:none;
+  z-index:9999;
+  pointer-events:none;
+  animation:fall linear infinite;
+}
+@keyframes fall{
+  to{
+    transform:translateY(100vh);
+  }
+}
+
+/* ===== HIỆU ỨNG CLICK ===== */
+@keyframes clickEffect{
+  0%{
+    transform:translateY(0) scale(1);
+    opacity:1;
+  }
+  100%{
+    transform:translateY(-80px) scale(1.5);
+    opacity:0;
+  }
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+<h1 id="quizTitle">CHỦ NHẬT TIỆC VỜI NÍ NHỈ</h1>
+
+<div class="timer">
+⏱ Thời gian ní chiến đấu kkk: <span id="time">05:00</span>
+</div>
+
+<div id="quiz"></div>
+
+<button onclick="submitQuiz()">Nộp bài</button>
+</div>
+
+<!-- 🔊 NHẠC NỀN -->
+<audio id="bgMusic" loop preload="auto">
+  <source src="nhac4.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+/* ===== DỮ LIỆU ===== */
+let data=[
+ ["Able","có thể"],
+ ["Abandon","bỏ"],
+ ["About","khoảng, về"],
+ ["Above","lên, trên"],
+ ["Act","hành động"],
+ ["Add","thêm"],
+ ["Afraid","sợ"],
+ ["After","sau"],
+ ["Again","lại"],
+ ["Age","tuổi"],
+ ["Ago","trước đây"],
+ ["Agree","đồng ý"],
+ ["Air","bầu không khí"],
+ ["All","tất cả"],
+ ["Allow","cho phép"],
+ ["Also","cũng vậy"],
+ ["Always","luôn luôn"],
+ ["Among","ở giữa"],
+ ["And","và"],
+ ["Anger","tức giận"],
+ ["Animal","động vật"],
+ ["Answer","câu trả lời"],
+ ["Appear","xuất hiện"],
+ ["Apple","quả táo"],
+ ["Area","diện tích khu vực"],
+ ["Arrange","sắp xếp"],
+ ["arrive","đến"],
+ ["art","nghệ thuật"],
+ ["baby","em be"],
+ ["back","trở lại"],
+ ["bank","bờ"],
+ ["bad","xấu xa"],
+ ["ball","quả bóng"],
+ ["basic","nền tảng"],
+ ["beauty","vẻ đẹp"],
+ ["best","tốt nhất"],
+ ["believe","tin tưởng"],
+ ["befor","đằng trước"],
+ ["behind","đằng sau"],
+ ["bed","cái giường"],
+ ["blood","máu"],
+ ["begin","bắt đầu"],
+ ["big","to lớn"],
+ ["be","thì là "],
+ ["busy","bận"],
+ ["but","nhưng"],
+["box","hộp,thùng"],
+["bought","mua"],
+["bread","bánh mì"],
+["brothers","anh trai em trai em gai"],
+["both","cả hai"]
+];
+
+/* ===== TRỘN ===== */
+function shuffle(a){
+  for(let i=a.length-1;i>0;i--){
+    let j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+data=shuffle(data);
+const quiz=document.getElementById("quiz");
+
+/* ===== TẠO CÂU HỎI ===== */
+data.forEach((q,i)=>{
+  const correct=q[1];
+  const wrong=shuffle(
+    data.map(x=>x[1]).filter(v=>v!==correct)
+  ).slice(0,3);
+
+  const answers=shuffle([correct,...wrong]);
+
+  const div=document.createElement("div");
+  div.className="question";
+  div.dataset.correct=correct;
+
+  div.innerHTML=`
+    <strong>Câu ${i+1}: ${q[0]}</strong>
+    <div class="answers">
+      ${answers.map((a,j)=>`
+        <label>
+          <input type="radio" name="q${i}" value="${a}">
+          ${String.fromCharCode(65+j)}. ${a}
+        </label>
+      `).join("")}
+    </div>
+  `;
+  quiz.appendChild(div);
+});
+
+/* ===== PHÁT NHẠC 1 LẦN DUY NHẤT ===== */
+const bgMusic = document.getElementById("bgMusic");
+let musicStarted = false;
+
+document.addEventListener("change", e=>{
+  if(e.target.type==="radio" && !musicStarted){
+    bgMusic.volume = 0.4;
+    bgMusic.play();
+    musicStarted = true;
+  }
+});
+
+/* ===== ĐỒNG HỒ ===== */
+let timeLeft=300;
+let submitted=false;
+const timeEl=document.getElementById("time");
+
+const timer=setInterval(()=>{
+  const m=Math.floor(timeLeft/60);
+  const s=timeLeft%60;
+  timeEl.textContent=
+    `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+
+  if(timeLeft<=0){
+    clearInterval(timer);
+    if(!submitted){
+      alert("⏰ Hết giờ!");
+      submitQuiz();
+    }
+  }
+  timeLeft--;
+},1000);
+
+/* ===== NỘP BÀI ===== */
+function submitQuiz(){
+  if(submitted) return;
+  submitted=true;
+  clearInterval(timer);
+
+  /* DỪNG NHẠC */
+  bgMusic.pause();
+  bgMusic.currentTime = 0;
+
+  let score=0;
+
+  document.querySelectorAll(".question").forEach(q=>{
+    const correct=q.dataset.correct;
+    const chosen=q.querySelector("input:checked");
+
+    // Đánh dấu đáp án đúng
+    q.querySelectorAll("label").forEach(lb=>{
+      const input=lb.querySelector("input");
+      const v=input.value;
+      if(v===correct){
+        lb.classList.add("correct");
+      }
+    });
+
+    // Kiểm tra đáp án đã chọn
+    if(chosen){
+      if(chosen.value===correct){
+        score++;
+      }else{
+        // Chỉ tô đỏ nếu chọn SAI
+        chosen.parentElement.classList.add("wrong");
+      }
+    }
+  });
+
+  document.querySelectorAll("input").forEach(i=>i.disabled=true);
+
+  const totalQuestions = data.length;
+  const percentage = Math.floor((score / totalQuestions) * 100);
+  
+  let message="";
+  if(score===totalQuestions){
+    message="🏆 Nhi thật tuyệt vời quá 10 điểm gót chóp năm bờ vang!";
+  }else if(percentage>=83){
+    message="👏 Nhi giỏi quá!";
+  }else if(percentage>=67){
+    message="🤔 Quên rồi chứ gì!";
+  }else if(percentage>=50){
+    message="😢 Nhi làm tôi buồn hen!";
+  }else{
+    message="😴 Cố gắng hơn nhé!";
+  }
+
+  alert(
+    "🎯 KẾT QUẢ NHI È\n\n" +
+    "✅ Đúng: " + score + " / " + totalQuestions + " câu\n\n" +
+    message
+  );
+
+  // Gửi kết quả qua email
+  sendResultEmail(score, totalQuestions, message);
+}
+
+/* ===== HIỆU ỨNG TUYẾT RƠI ===== */
+function createSnowflake(){
+  const snowflake=document.createElement("div");
+  snowflake.className="snowflake";
+  snowflake.innerHTML="❄";
+  snowflake.style.left=Math.random()*100+"%";
+  snowflake.style.animationDuration=Math.random()*3+2+"s";
+  snowflake.style.opacity=Math.random();
+  snowflake.style.fontSize=Math.random()*10+10+"px";
+  document.body.appendChild(snowflake);
+  setTimeout(()=>{
+    snowflake.remove();
+  },5000);
+}
+setInterval(createSnowflake,200);
+
+/* ===== HIỆU ỨNG KHI CLICK ===== */
+document.addEventListener("click", e=>{
+  const colors=["❤️","💖","✨","⭐","🌟","💫","🎉","🎊"];
+  const emoji=colors[Math.floor(Math.random()*colors.length)];
+  
+  const effect=document.createElement("div");
+  effect.textContent=emoji;
+  effect.style.position="fixed";
+  effect.style.left=e.clientX+"px";
+  effect.style.top=e.clientY+"px";
+  effect.style.fontSize="24px";
+  effect.style.pointerEvents="none";
+  effect.style.zIndex="10000";
+  effect.style.animation="clickEffect 1s ease-out forwards";
+  
+  document.body.appendChild(effect);
+  
+  setTimeout(()=>{
+    effect.remove();
+  },1000);
+});
+
+/* ===== GỬI KẾT QUẢ QUA EMAIL (Formspree - Dễ dàng) ===== */
+function sendResultEmail(score, totalQuestions, message) {
+  // ✅ Đã cấu hình Formspree endpoint
+  const FORMPREE_ENDPOINT = "https://formspree.io/f/xrepvazp";
+  
+  // Nếu chưa cấu hình, dùng cách mailto (mở ứng dụng email)
+  if (FORMPREE_ENDPOINT.includes("YOUR_FORMPREE")) {
+    // Cách dự phòng: Mở ứng dụng email với nội dung sẵn
+    const emailSubject = encodeURIComponent(`🎯 Kết quả Quiz: ${score}/${totalQuestions} câu đúng`);
+    const emailBody = encodeURIComponent(
+      `Kết quả bài quiz tiếng Anh:\n\n` +
+      `✅ Đúng: ${score} / ${totalQuestions} câu\n` +
+      `📊 Tỷ lệ: ${Math.floor((score / totalQuestions) * 100)}%\n` +
+      `⏱️ Thời gian: ${Math.floor((300 - timeLeft) / 60)} phút ${((300 - timeLeft) % 60)} giây\n` +
+      `📅 Ngày: ${new Date().toLocaleString('vi-VN')}\n\n` +
+      `${message}`
+    );
+    
+    window.location.href = `mailto:kietphan28122004@gmail.com?subject=${emailSubject}&body=${emailBody}`;
+    return;
+  }
+
+  // Gửi qua Formspree
+  const formData = {
+    _to: "kietphan28122004@gmail.com",
+    _subject: `🎯 Kết quả Quiz: ${score}/${totalQuestions} câu đúng`,
+    score: score,
+    total: totalQuestions,
+    percentage: Math.floor((score / totalQuestions) * 100),
+    message: message,
+    date: new Date().toLocaleString('vi-VN'),
+    time_spent: Math.floor((300 - timeLeft) / 60) + " phút " + ((300 - timeLeft) % 60) + " giây",
+    result_text: `Đúng: ${score}/${totalQuestions} câu (${Math.floor((score / totalQuestions) * 100)}%)`
+  };
+
+  fetch(FORMPREE_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Accept": "application/json"
+    },
+    body: JSON.stringify(formData)
+  })
+  .then(response => {
+    if (response.ok) {
+      console.log('✅ Email đã được gửi thành công!');
+    } else {
+      throw new Error('Lỗi gửi email');
+    }
+  })
+  .catch(error => {
+    console.log('❌ Lỗi gửi email:', error);
+    // Fallback: dùng mailto nếu Formspree lỗi
+    const emailSubject = encodeURIComponent(`🎯 Kết quả Quiz: ${score}/${totalQuestions} câu đúng`);
+    const emailBody = encodeURIComponent(
+      `Kết quả bài quiz tiếng Anh:\n\n` +
+      `✅ Đúng: ${score} / ${totalQuestions} câu\n` +
+      `📊 Tỷ lệ: ${Math.floor((score / totalQuestions) * 100)}%\n` +
+      `⏱️ Thời gian: ${Math.floor((240 - timeLeft) / 60)} phút ${((300 - timeLeft) % 60)} giây\n` +
+      `📅 Ngày: ${new Date().toLocaleString('vi-VN')}\n\n` +
+      `${message}`
+    );
+    window.location.href = `mailto:kietphan28122004@gmail.com?subject=${emailSubject}&body=${emailBody}`;
+  });
+}
+</script>
+</body>
+</html>
